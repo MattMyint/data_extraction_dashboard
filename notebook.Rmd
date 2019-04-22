@@ -1,0 +1,78 @@
+---
+title: "Data extraction DE1901130"
+author: Matthew Myint
+date: April 15, 2019
+output: html_document
+runtime: shiny
+---
+
+```{r global, include=FALSE}
+# load data in 'global' chunk so it can be shared
+# by all users of the dashboard
+library(plotly)
+source("R/load_clean.R")
+source("R/plotly_dfs.R")
+```
+# LDL-C Dotplot  
+
+```{r, echo=FALSE}
+renderPlotly({
+    d <- event_data('plotly_click')
+    plotly_dotplot(ldl.dot, xlab = 'LDL-C', d=d)
+    })
+```
+
+# Age Dotplot  
+```{r, echo=FALSE}
+renderPlotly({
+    d <- event_data('plotly_click')
+    plotly_dotplot(age.dot, xlab = 'Age', d=d)
+    })
+```
+
+# Number of visits per patient  
+```{r, echo=FALSE}
+renderPlotly({
+    d <- event_data('plotly_click')
+    plotly_dotplot(visit.dot, xlab = 'Number of visits (up to extraction date)', d=d)
+    })
+```
+
+# Patient Viewer  
+```{r, echo=FALSE}
+selectInput('selectPat', "Select Patient:", choices = ldl_df$PatientNo)
+pat_diag <- aggregate(diag_df, by = list(Patient = diag_df$Patient.No, Diagnosis = diag_df$Diagnosis.Description), length)[,1:3]
+colnames(pat_diag)[3] <- "occurences"
+
+fluidRow(
+    column(8,
+           renderTable({
+    
+    out <- pat_diag[pat_diag$Patient == input$selectPat, c("Diagnosis", "occurences")]
+    out <- out[order(out$occurences, decreasing = T),]
+    out
+})
+           ),
+    column(4,
+           renderText({"Patient details:"}),
+           renderText({pat_ldl <- ldl_df[ldl_df$PatientNo == input$selectPat,]
+               pat_info <- paste0("  Age: ", pat_ldl$Age)
+               pat_info}),
+           renderText({
+               pat_ldl <- ldl_df[ldl_df$PatientNo == input$selectPat,]
+               pat_info <- paste0("  LDL-C: ", pat_ldl$LDLc, "\n")
+               pat_info
+               }),
+           renderText({
+               pat_ldl <- ldl_df[ldl_df$PatientNo == input$selectPat,]
+               pat_info <- paste0("  Visits to date: ", pat_ldl$VisitNo, "\n")
+               pat_info
+               }),
+           renderTable({
+               pat_meds <- meds_df[meds_df$Patient.No == input$selectPat,]
+               pat_meds <- pat_meds[order(pat_meds$Visit.No, decreasing = T)[1:2],]
+               pat_meds[,4:6]
+               })
+           )
+)
+```
